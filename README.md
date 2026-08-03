@@ -90,17 +90,9 @@ O sistema foi projetado para:
 - Ações rápidas (Visualizar, Resolver, Fechar)
 - Priorização automática
 
-![Incidentes](docs/images/incidentes.png)
+![Incidentes](docs/images/insidentes.png)
 
-### 3️⃣ **Inventário de Ativos**
-- Lista completa de ativos
-- Status e criticidade
-- Localização e departamento
-- Busca e filtros
-
-![Ativos](docs/images/ativos.png)
-
-### 4️⃣ **Monitoramento Contínuo**
+### 3️⃣ **Monitoramento Contínuo**
 - Status dos servidores em tempo real
 - Métricas de CPU, Memória e Disco
 - Uptime e disponibilidade
@@ -108,29 +100,13 @@ O sistema foi projetado para:
 
 ![Monitoramento](docs/images/monitoramento.png)
 
-### 5️⃣ **IA Analyst**
-- Detecção de anomalias com Machine Learning
-- Classificação automática de incidentes
-- Insights e recomendações
-- Análise preditiva
+### 4️⃣ **Simulação de Ataques**
+- Simulação de ataques cibernéticos
+- Efeitos Matrix para visualização
+- Análise de vulnerabilidades
+- Relatórios de simulação
 
-![IA Analyst](docs/images/ia-analyst.png)
-
-### 6️⃣ **Relatórios Automatizados**
-- Geração automática de relatórios
-- Exportação de dados
-- Análise histórica
-- Conformidade com LGPD e ISO
-
-![Relatórios](docs/images/relatorios.png)
-
-### 7️⃣ **Configurações**
-- Preferências gerais
-- Notificações
-- Segurança e integrações
-- Personalização
-
-![Configurações](docs/images/configuracoes.png)
+![Simulação](docs/images/simulacao.png)
 
 ---
 
@@ -142,14 +118,14 @@ O sistema foi projetado para:
 │ │
 │ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ │
 │ │ FRONTEND │ │ BACKEND │ │ IA SERVICE │ │
-│ │ Next.js │◄─┤ Rust/Actix │◄─┤ Python/ML │ │
-│ │ React/TS │ │ Web API │ │ PyTorch │ │
+│ │ Next.js 14 │◄─┤ Rust/Actix │◄─┤ Python/ML │ │
+│ │ TypeScript │ │ Web API │ │ PyTorch │ │
 │ └─────────────────┘ └─────────────────┘ └─────────────────┘ │
 │ │ │ │ │
 │ ▼ ▼ ▼ │
 │ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ │
 │ │ DATABASE │ │ AGENT │ │ REDIS │ │
-│ │ PostgreSQL │ │ Coleta de │ │ Cache │ │
+│ │ PostgreSQL 16 │ │ Coleta de │ │ Cache e │ │
 │ │ Dados Reais │ │ Dados │ │ Performance │ │
 │ └─────────────────┘ └─────────────────┘ └─────────────────┘ │
 │ │
@@ -173,10 +149,10 @@ text
 ## 💻 Tecnologias Utilizadas
 
 ### Backend
-- **Linguagem**: Rust
+- **Linguagem**: Rust 1.85
 - **Framework**: Actix Web
-- **Banco de Dados**: PostgreSQL
-- **Cache**: Redis
+- **Banco de Dados**: PostgreSQL 16
+- **Cache**: Redis 7
 - **Mensageria**: RabbitMQ
 
 ### Frontend
@@ -187,13 +163,13 @@ text
 - **Gráficos**: Recharts
 
 ### IA/ML
-- **Linguagem**: Python
+- **Linguagem**: Python 3.11
 - **Frameworks**: PyTorch, Scikit-learn
 - **Análise**: Pandas, NumPy
 
 ### Infraestrutura
-- **Containerização**: Docker
-- **Orquestração**: Docker Compose / Kubernetes
+- **Containerização**: Docker 24.0
+- **Orquestração**: Docker Compose
 - **Monitoramento**: Prometheus
 
 ---
@@ -212,12 +188,11 @@ text
 
 ```bash
 # 1. Clonar o repositório
-git clone https://github.com/seu-usuario/ckaew-sentinel-ai.git
+git clone https://github.com/wil-ckaew/ckaew-sentinel-ai.git
 cd ckaew-sentinel-ai
 
 # 2. Configurar variáveis de ambiente
-cp backend/.env.example backend/.env
-cp web-dashboard/.env.local.example web-dashboard/.env.local
+cp .env.example .env
 
 # 3. Iniciar o sistema
 ./start_dev.sh
@@ -240,13 +215,13 @@ Modo Produção
 bash
 
 # Construir e iniciar
-docker compose up -d --build
+docker-compose up -d --build
 
 # Verificar status
-docker compose ps
+docker-compose ps
 
 # Ver logs
-docker compose logs -f
+docker-compose logs -f
 
 Comandos Úteis
 bash
@@ -261,30 +236,22 @@ bash
 ./demo_system.sh
 
 🖥️ Telas do Sistema
-Página de Login
-
-https://docs/images/login.png
 Dashboard Principal
 
 https://docs/images/dashboard.png
+Visão geral do sistema com métricas em tempo real
 Gestão de Incidentes
 
-https://docs/images/incidentes.png
-Inventário de Ativos
-
-https://docs/images/ativos.png
+https://docs/images/insidentes.png
+Painel completo de gerenciamento de incidentes
 Monitoramento
 
 https://docs/images/monitoramento.png
-IA Analyst
+Monitoramento contínuo de segurança e tráfego
+Simulação de Ataques
 
-https://docs/images/ia-analyst.png
-Relatórios
-
-https://docs/images/relatorios.png
-Configurações
-
-https://docs/images/configuracoes.png
+https://docs/images/simulacao.png
+Simulação de ataques cibernéticos com efeitos Matrix
 🎯 Benefícios
 Para Empresas
 Benefício	Descrição
@@ -338,9 +305,9 @@ Melhorias Planejadas
 
 Roadmap
 Fase	Período	Objetivo
-Fase 1	Concluído	MVP com funcionalidades básicas
-Fase 2	Em Andamento	IA e detecção de anomalias
-Fase 3	Futuro	Integrações e escalabilidade
+Fase 1	✅ Concluído	MVP com funcionalidades básicas
+Fase 2	🚀 Em Andamento	IA e detecção de anomalias
+Fase 3	📅 Futuro	Integrações e escalabilidade
 🤝 Contribuição
 
 Contribuições são bem-vindas! Siga os passos:
@@ -368,7 +335,7 @@ Padrões de Código
 Este projeto está licenciado sob a licença MIT - veja o arquivo LICENSE para detalhes.
 👥 Equipe
 
-    Desenvolvimento: [Seu Nome]
+    Desenvolvimento Backend: [Seu Nome]
 
     IA/ML: [Seu Nome]
 
@@ -400,173 +367,31 @@ Feito com ❤️ pela CKAEW Security
 
 ⬆ Voltar ao topo
 </div> EOF
-echo "✅ README.md criado com sucesso!"
+echo "✅ README.md atualizado com sucesso!"
 text
 
 
-### 3. Criar um arquivo de exemplo para as imagens
+## 2. Agora, adicione as imagens ao Git e faça o push:
 
 ```bash
-cd ~/rust/ckaew-sentinel-ai/docs
-
-cat > IMAGES_GUIDE.md << 'EOF'
-# 📸 Guia para Capturar Imagens do Sistema
-
-## Como Capturar Prints
-
-### 1. Acesse o Sistema
-
-http://localhost:3000
-text
-
-
-### 2. Faça Login
-
-Usuário: admin
-Senha: admin123
-text
-
-
-### 3. Capture as Telas
-
-#### 📊 Dashboard
-- Página inicial com todas as métricas
-- Gráficos e estatísticas
-
-#### 🚨 Incidentes
-- Lista de incidentes
-- Filtros e ações
-
-#### 📦 Ativos
-- Inventário de ativos
-- Status e criticidade
-
-#### 📊 Monitoramento
-- Status dos servidores
-- Gráficos de uso
-
-#### 🧠 IA Analyst
-- Detecção de anomalias
-- Insights
-
-#### 📋 Relatórios
-- Lista de relatórios
-- Opções de exportação
-
-#### ⚙️ Configurações
-- Configurações do sistema
-
-### 4. Salve as Imagens
-
-Coloque as imagens na pasta: `docs/images/`
-
-Nomes sugeridos:
-- `dashboard.png`
-- `incidentes.png`
-- `ativos.png`
-- `monitoramento.png`
-- `ia-analyst.png`
-- `relatorios.png`
-- `configuracoes.png`
-- `login.png`
-
-## Ferramentas para Captura
-
-### Linux
-```bash
-# Usando gnome-screenshot
-gnome-screenshot -a
-
-# Usando shutter
-shutter -s
-
-Windows
-text
-
-Windows + Shift + S (Snipping Tool)
-
-Mac
-text
-
-Cmd + Shift + 4
-
-Dicas
-
-    Use resolução 1920x1080
-
-    Capture a tela inteira
-
-    Mantenha o tema claro para melhor visibilidade
-
-    Remova informações sensíveis
-
-text
-
-
-echo "✅ Guia de imagens criado!"
-
-4. Criar um script para gerar o README com imagens
-bash
-
 cd ~/rust/ckaew-sentinel-ai
 
-cat > generate_readme.sh << 'EOF'
-#!/bin/bash
+# Adicionar README e imagens
+git add README.md docs/images/*.png
 
-echo "📝 GERANDO README COMPLETO"
-echo "=========================="
-echo ""
+# Commit
+git commit -m "📸 Adiciona screenshots do sistema e atualiza README
 
-# Verificar se a pasta de imagens existe
-if [ ! -d "docs/images" ]; then
-    echo "⚠️  Pasta docs/images não encontrada!"
-    echo "📸 Por favor, tire prints do sistema e coloque em: docs/images/"
-    echo ""
-    echo "  1. Acesse: http://localhost:3000"
-    echo "  2. Faça login: admin/admin123"
-    echo "  3. Tire prints das páginas"
-    echo "  4. Salve em: docs/images/"
-    echo ""
-    echo "📋 Páginas para capturar:"
-    echo "  - Dashboard (dashboard.png)"
-    echo "  - Incidentes (incidentes.png)"
-    echo "  - Ativos (ativos.png)"
-    echo "  - Monitoramento (monitoramento.png)"
-    echo "  - IA Analyst (ia-analyst.png)"
-    echo "  - Relatórios (relatorios.png)"
-    echo "  - Configurações (configuracoes.png)"
-    echo "  - Login (login.png)"
-    echo ""
-    
-    read -p "Já capturou as imagens? (s/N): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Ss]$ ]]; then
-        echo "📸 Por favor, capture as imagens primeiro!"
-        exit 1
-    fi
-fi
+- Dashboard principal
+- Gerenciamento de incidentes
+- Monitoramento
+- Simulação de ataques"
 
-# Verificar se o README existe
-if [ -f "README.md" ]; then
-    echo "✅ README.md já existe!"
-else
-    echo "❌ README.md não encontrado!"
-    exit 1
-fi
+# Push para o GitHub
+git push
 
-# Contar imagens
-IMAGE_COUNT=$(ls -1 docs/images/*.png 2>/dev/null | wc -l)
-echo ""
-echo "📊 Imagens encontradas: $IMAGE_COUNT"
+3. Verificar no GitHub:
 
-if [ "$IMAGE_COUNT" -gt "0" ]; then
-    echo "✅ README com $IMAGE_COUNT imagens está pronto!"
-else
-    echo "⚠️  Nenhuma imagem encontrada!"
-    echo "   Adicione imagens em: docs/images/"
-fi
+Acesse: https://github.com/wil-ckaew/ckaew-sentinel-ai
 
-echo ""
-echo "✅ README gerado com sucesso!"
-echo "📖 Visualize: cat README.md | less"
-echo "🌐 Acesse: http://localhost:3000 para capturar imagens"
+O README agora vai mostrar todas as imagens do sistema! 📸🚀
