@@ -1,0 +1,27 @@
+# FastAPI e servidor
+fastapi==0.115.12
+uvicorn==0.34.0
+python-multipart==0.0.20
+
+# Machine Learning - Versões compatíveis
+scikit-learn==1.5.2
+numpy==1.26.4
+pandas==2.2.3
+scipy==1.14.1
+
+# Deep Learning (opcional - remover para evitar conflitos)
+# tensorflow==2.19.0
+# torch==2.6.0
+
+# Utilitários
+python-dotenv==1.0.0
+pydantic==2.10.6
+requests==2.32.3
+joblib==1.4.2
+
+# Monitoramento
+prometheus-client==0.21.1
+
+# Database (para ler logs)
+asyncpg==0.30.0
+sqlalchemy==2.0.38

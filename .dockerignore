@@ -1,0 +1,14 @@
+target/
+.git/
+*.md
+*.log
+*.tmp
+.DS_Store
+.env.local
+.env.*.local
+node_modules/
+dist/
+build/
+*.pem
+*.key
+*.crt
