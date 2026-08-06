@@ -1,0 +1,14 @@
+# Configuração do Agente CKAEW Sentinel AI
+server_url = "http://backend:8080"
+api_key = "agent-secret-key-123456"
+collect_interval_secs = 30
+report_interval_secs = 60
+
+log_paths = [
+    "/var/log/auth.log",
+    "/var/log/syslog",
+    "/var/log/secure",
+    "/var/log/messages"
+]
+
+max_log_size = 10485760

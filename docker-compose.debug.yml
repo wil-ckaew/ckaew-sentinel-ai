@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:16
+    container_name: sentinel-db
+    environment:
+      POSTGRES_DB: sentinel_ai
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.simple
+    container_name: sentinel-backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/sentinel_ai
+      JWT_SECRET: supersecretkeychangeinproduction123456789
+      HOST: 0.0.0.0
+      PORT: 8080
+      RUST_LOG: info
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend:/app
+      - cargo_cache:/usr/local/cargo/registry
+
+volumes:
+  postgres_data:
+  cargo_cache:
