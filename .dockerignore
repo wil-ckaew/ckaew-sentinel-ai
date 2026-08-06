@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 node_modules
 .next
 .git
@@ -5,3 +6,19 @@ node_modules
 *.log
 .env.local
 .DS_Store
+=======
+target/
+.git/
+*.md
+*.log
+*.tmp
+.DS_Store
+.env.local
+.env.*.local
+node_modules/
+dist/
+build/
+*.pem
+*.key
+*.crt
+>>>>>>> 61a6549ee9cfbf7e7cec9a1308aafc1cd6828fce
