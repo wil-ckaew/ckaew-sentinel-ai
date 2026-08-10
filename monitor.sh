@@ -1,52 +1,39 @@
 #!/bin/bash
+# ============================================
+# MONITORAMENTO EM TEMPO REAL
+# ============================================
 
 echo "📊 MONITORANDO SISTEMA EM TEMPO REAL"
 echo "===================================="
 echo ""
-echo "Pressione Ctrl+C para parar"
-echo ""
 
 while true; do
     clear
-    echo "📊 CKAEW Sentinel AI - Monitoramento em Tempo Real"
-    echo "=================================================="
-    echo "⏰ $(date '+%H:%M:%S')"
+    echo "📊 CKAEW Sentinel AI - $(date '+%H:%M:%S')"
+    echo "===================================="
     echo ""
     
     # Backend
-    echo "📡 Backend:"
-    HEALTH=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/health)
-    if [ "$HEALTH" = "200" ]; then
-        echo "  ✅ Status: Online (HTTP $HEALTH)"
+    curl -s http://localhost:8080/api/health 2>/dev/null | jq -r '"📡 Backend: \(.status) (v\(.version))"' 2>/dev/null || echo "📡 Backend: ❌ Offline"
+    
+    # AI Service
+    curl -s http://localhost:8000/health 2>/dev/null | jq -r '"🧠 AI Service: \(.status)"' 2>/dev/null || echo "🧠 AI Service: ❌ Offline"
+    
+    # Frontend
+    FRONTEND=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 2>/dev/null)
+    if [ "$FRONTEND" = "200" ]; then
+        echo "🖥️ Frontend: ✅ Online (HTTP $FRONTEND)"
     else
-        echo "  ❌ Status: Offline (HTTP $HEALTH)"
+        echo "🖥️ Frontend: ❌ Offline (HTTP $FRONTEND)"
     fi
-    
-    # Assets
-    ASSETS=$(curl -s http://localhost:8080/api/assets | jq '.total' 2>/dev/null)
-    echo "  📦 Ativos: $ASSETS"
-    
-    # Logs
-    LOGS=$(curl -s http://localhost:8080/api/security/logs | jq '.total' 2>/dev/null)
-    echo "  📝 Logs: $LOGS"
     
     # Stats
-    STATS=$(curl -s http://localhost:8080/api/security/logs/stats 2>/dev/null)
-    CRITICAL=$(echo $STATS | jq '.critical' 2>/dev/null)
-    echo "  🔴 Logs Críticos: $CRITICAL"
-    
-    # Alerts
-    ALERTS=$(curl -s http://localhost:8080/api/alerts | jq '.total' 2>/dev/null)
-    echo "  🚨 Alertas: $ALERTS"
-    
     echo ""
-    echo "🖥️ Frontend:"
-    WEB=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000)
-    if [ "$WEB" = "200" ]; then
-        echo "  ✅ Status: Online (HTTP $WEB)"
-    else
-        echo "  ❌ Status: Offline (HTTP $WEB)"
-    fi
+    echo "📊 Estatísticas:"
+    ASSETS=$(curl -s http://localhost:8080/api/assets 2>/dev/null | jq '.total' 2>/dev/null)
+    ALERTS=$(curl -s http://localhost:8080/api/alerts 2>/dev/null | jq '.total' 2>/dev/null)
+    echo "  📦 Ativos: ${ASSETS:-0}"
+    echo "  🚨 Alertas: ${ALERTS:-0}"
     
     echo ""
     echo "🔄 Atualizando a cada 5 segundos..."

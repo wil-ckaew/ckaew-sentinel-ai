@@ -1,54 +1,114 @@
-<<<<<<< HEAD
-FROM node:20-alpine AS builder
+# ============================================
+# CKAEW SENTINEL AI - DOCKERFILE COMPLETO
+# ============================================
+
+# ============================================
+# 1. BACKEND RUST
+# ============================================
+FROM rust:latest AS backend-builder
 
 WORKDIR /app
 
-COPY package*.json ./
-COPY tailwind.config.js ./
-COPY postcss.config.js ./
+# Copiar Cargo.toml e Cargo.lock
+COPY backend/Cargo.toml backend/Cargo.lock* ./
+
+# Criar src dummy para cache
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+RUN cargo build --release
+RUN rm -rf src
+
+# Copiar código fonte real
+COPY backend/src ./src
+COPY backend/migrations ./migrations
+COPY backend/.env .env
+
+# Build final
+RUN cargo build --release
+
+# ============================================
+# 2. FRONTEND NEXT.JS
+# ============================================
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /app
+
+# Copiar arquivos de dependência
+COPY web-dashboard/package*.json ./
+COPY web-dashboard/tailwind.config.js ./
+COPY web-dashboard/postcss.config.js ./
 
 RUN npm install
 
-COPY . .
+# Copiar código fonte
+COPY web-dashboard ./
+
+# Build
 RUN npm run build
 
-FROM node:20-alpine AS runner
-
-WORKDIR /app
-
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
-
-EXPOSE 3000
-
-CMD ["node", "server.js"]
-=======
-FROM rust:latest AS builder
-
-WORKDIR /app
-
-COPY backend/Cargo.toml backend/Cargo.lock ./
-
-RUN mkdir src && echo "fn main() {}" > src/main.rs
-
-RUN cargo build --release
-
-COPY backend/src ./src
-
-RUN cargo build --release
-
-
+# ============================================
+# 3. IMAGEM FINAL
+# ============================================
 FROM debian:bookworm-slim
 
+# Instalar dependências do sistema
+RUN apt-get update && \
+    apt-get install -y \
+        ca-certificates \
+        curl \
+        python3 \
+        python3-pip \
+        python3-venv \
+        postgresql-client \
+        && \
+    rm -rf /var/lib/apt/lists/*
+
+# Criar diretórios
 WORKDIR /app
+RUN mkdir -p /app/backend/uploads /app/backend/logs /app/scripts /app/backups
 
-COPY --from=builder /app/target/release/ckaew-sentinel-ai .
+# ============================================
+# 4. COPIAR BACKEND
+# ============================================
+COPY --from=backend-builder /app/target/release/ckaew-sentinel-ai /usr/local/bin/
+COPY --from=backend-builder /app/migrations /app/migrations
+COPY --from=backend-builder /app/.env /app/.env
 
-EXPOSE 8080
+# ============================================
+# 5. COPIAR FRONTEND
+# ============================================
+COPY --from=frontend-builder /app/.next/standalone /app/web-dashboard
+COPY --from=frontend-builder /app/.next/static /app/web-dashboard/.next/static
+COPY --from=frontend-builder /app/public /app/web-dashboard/public
 
-CMD ["./ckaew-sentinel-ai"]
->>>>>>> 61a6549ee9cfbf7e7cec9a1308aafc1cd6828fce
+# ============================================
+# 6. COPIAR SCRIPTS E BOT
+# ============================================
+COPY scripts/requirements.txt /app/scripts/
+COPY scripts/telegram_bot_completo.py /app/scripts/
+COPY scripts/start_bot.sh /app/scripts/
+COPY scripts/backup.sh /app/scripts/
+COPY scripts/send_report.sh /app/scripts/
+
+# Instalar dependências Python
+RUN python3 -m pip install --no-cache-dir -r /app/scripts/requirements.txt
+
+# Dar permissão
+RUN chmod +x /app/scripts/*.sh && \
+    chmod +x /usr/local/bin/ckaew-sentinel-ai
+
+# ============================================
+# 7. EXPOR PORTAS
+# ============================================
+EXPOSE 8080 3000
+
+# ============================================
+# 8. HEALTH CHECK
+# ============================================
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8080/api/health || exit 1
+
+# ============================================
+# 9. ENTRYPOINT
+# ============================================
+# Iniciar backend e frontend
+CMD ["/usr/local/bin/ckaew-sentinel-ai"]

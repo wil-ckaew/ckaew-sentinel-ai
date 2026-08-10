@@ -1,43 +1,34 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from api.routes import router
 import uvicorn
-import logging
+import sys
+import os
+from pathlib import Path
 
-# Configuração de logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Adicionar diretório atual ao path
+sys.path.insert(0, str(Path(__file__).parent))
 
-app = FastAPI(title="CKAEW Sentinel AI Service", version="1.0.0")
+# Verificar se o arquivo api/app.py existe
+if not os.path.exists("api/app.py"):
+    print("❌ Erro: api/app.py não encontrado!")
+    sys.exit(1)
 
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+print("🚀 CKAEW Sentinel AI - AI Service")
+print("📡 Servidor rodando em http://0.0.0.0:8000")
+print("📂 Diretório:", os.getcwd())
+print("📂 Conteúdo:", os.listdir("."))
 
-# Rotas
-app.include_router(router, prefix="/api/v1")
-
-@app.get("/")
-async def root():
-    return {
-        "service": "CKAEW Sentinel AI",
-        "version": "1.0.0",
-        "status": "online"
-    }
-
-@app.get("/health")
-async def health():
-    return {"status": "healthy"}
+try:
+    from api.app import app
+    print("✅ App importado com sucesso!")
+except Exception as e:
+    print(f"❌ Erro ao importar app: {e}")
+    sys.exit(1)
 
 if __name__ == "__main__":
     uvicorn.run(
-        "main:app",
+        "api.app:app",
         host="0.0.0.0",
-        port=8001,
-        reload=True
+        port=8000,
+        reload=False,
+        workers=1,
+        log_level="info"
     )

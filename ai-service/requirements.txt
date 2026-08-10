@@ -1,21 +1,14 @@
-# Core
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-pydantic==2.5.0
-
-# ML/AI
-numpy==1.24.3
-pandas==2.0.3
-scikit-learn==1.3.0
-torch==2.0.1
-torchvision==0.15.2
-
-# NLP
-transformers==4.35.0
-nltk==3.8.1
-
-# Utils
+fastapi==0.115.12
+uvicorn==0.34.0
+python-multipart==0.0.20
+scikit-learn==1.6.1
+numpy==2.2.4
+pandas==2.2.3
+scipy==1.15.2
 python-dotenv==1.0.0
-requests==2.31.0
-aiohttp==3.9.0
-joblib==1.3.2
+pydantic==2.10.6
+requests==2.32.3
+joblib==1.4.2
+prometheus-client==0.21.1
+asyncpg==0.30.0
+sqlalchemy==2.0.38

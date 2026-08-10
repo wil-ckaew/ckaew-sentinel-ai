@@ -1,0 +1,4 @@
+# Dependências do Bot Telegram e Serviços Python
+requests>=2.31.0
+python-telegram-bot>=20.0
+python-dotenv>=1.0.0
