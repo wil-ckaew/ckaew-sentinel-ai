@@ -139,3 +139,19 @@ coverage/
 .terraform.lock.hcl
 >>>>>>> 61a6549ee9cfbf7e7cec9a1308aafc1cd6828fce
 .env.local
+
+# Arquivos temporários e grandes
+*.pack
+*.a
+*.xcframework
+.git-backup-*/
+bfg.jar
+passwords.txt
+
+# Arquivos de backup
+*-backup/
+*.log
+*.tmp
+
+# Node modules (já deve estar no .gitignore)
+node_modules/
