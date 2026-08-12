@@ -155,3 +155,4 @@ passwords.txt
 
 # Node modules (já deve estar no .gitignore)
 node_modules/
+node_modules/
