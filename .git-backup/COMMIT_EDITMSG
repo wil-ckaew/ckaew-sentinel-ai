@@ -1,0 +1,8 @@
+feat: Implementar CKAEW Copilot com IA Groq
+
+- Adicionar AI Service com integração Groq API
+- Implementar fallback local para respostas de cibersegurança
+- Adicionar respostas sobre POS, vírus e ransomware
+- Configurar Docker Compose com variáveis de ambiente
+- Adicionar scripts de diagnóstico
+- Remover chaves de API dos arquivos

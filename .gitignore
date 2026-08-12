@@ -138,3 +138,4 @@ coverage/
 *.tfstate.*
 .terraform.lock.hcl
 >>>>>>> 61a6549ee9cfbf7e7cec9a1308aafc1cd6828fce
+.env.local
