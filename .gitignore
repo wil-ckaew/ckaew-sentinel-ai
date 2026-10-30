@@ -168,3 +168,8 @@ ai-service/models/*.pkl
 # Backups locais e arquivos temporários
 /backups/*.dump
 /ai-service/api/*.bak-*
+
+# Backups locais e arquivos temporários
+/backups/*.dump
+/ai-service/api/*.bak-*
+/agent/target/
