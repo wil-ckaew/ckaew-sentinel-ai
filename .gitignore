@@ -164,3 +164,7 @@ ai-service/models/*.pkl
 
 # Artefatos compilados do agente Rust
 /agent/target/
+
+# Backups locais e arquivos temporários
+/backups/*.dump
+/ai-service/api/*.bak-*
