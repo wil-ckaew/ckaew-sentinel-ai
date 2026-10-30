@@ -1,13 +1,13 @@
+mod agent_ingest;
+mod agents;
+
 use actix_web::{
-    http::header::AUTHORIZATION,
-    middleware::Logger,
-    web, App, HttpRequest, HttpResponse, HttpServer,
+    http::header::AUTHORIZATION, middleware::Logger, web, App, HttpRequest, HttpResponse,
+    HttpServer,
 };
 use bcrypt::{hash, verify, DEFAULT_COST};
 use dotenv::dotenv;
-use jsonwebtoken::{
-    decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation,
-};
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::{
@@ -25,6 +25,7 @@ struct AppState {
     pool: PgPool,
     jwt_secret: String,
     monitor_token: String,
+    agent_token: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -132,10 +133,7 @@ fn authenticate(
         _ => return Err(unauthorized()),
     };
 
-    if allow_monitor
-        && !state.monitor_token.is_empty()
-        && token == state.monitor_token
-    {
+    if allow_monitor && !state.monitor_token.is_empty() && token == state.monitor_token {
         return Ok(None);
     }
 
@@ -151,10 +149,7 @@ fn authenticate(
     }
 }
 
-fn require_admin(
-    request: &HttpRequest,
-    state: &AppState,
-) -> Result<Claims, HttpResponse> {
+fn require_admin(request: &HttpRequest, state: &AppState) -> Result<Claims, HttpResponse> {
     let claims = authenticate(request, state, false)?.ok_or_else(unauthorized)?;
 
     if claims.role.eq_ignore_ascii_case("admin") {
@@ -169,23 +164,18 @@ async fn bootstrap_admin(
     username: &str,
     password: &str,
 ) -> Result<(), Box<dyn Error>> {
-    let existing = sqlx::query_scalar::<_, String>(
-        "SELECT id::text FROM users WHERE username = $1",
-    )
-    .bind(username)
-    .fetch_optional(pool)
-    .await?;
+    let existing =
+        sqlx::query_scalar::<_, String>("SELECT id::text FROM users WHERE username = $1")
+            .bind(username)
+            .fetch_optional(pool)
+            .await?;
 
     if existing.is_some() {
         println!("Usuário inicial já existe; senha preservada.");
         return Ok(());
     }
 
-    if username.len() < 3
-        || username.len() > 64
-        || password.len() < 8
-        || password.len() > 72
-    {
+    if username.len() < 3 || username.len() > 64 || password.len() < 8 || password.len() > 72 {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
             "Credenciais iniciais inválidas.",
@@ -228,10 +218,7 @@ async fn health_check(state: web::Data<AppState>) -> HttpResponse {
     }
 }
 
-async fn login(
-    state: web::Data<AppState>,
-    body: web::Json<LoginRequest>,
-) -> HttpResponse {
+async fn login(state: web::Data<AppState>, body: web::Json<LoginRequest>) -> HttpResponse {
     if body.username.is_empty()
         || body.username.len() > 64
         || body.password.is_empty()
@@ -252,15 +239,15 @@ async fn login(
         Ok(None) => return unauthorized(),
         Err(error) => {
             log::error!("Falha na consulta de login: {error}");
-            return HttpResponse::InternalServerError()
-                .json(json!({"error": "Login unavailable"}));
+            return HttpResponse::InternalServerError().json(json!({"error": "Login unavailable"}));
         }
     };
 
     let stored_hash: String = match row.try_get("password_hash") {
         Ok(value) => value,
-        Err(_) => return HttpResponse::InternalServerError()
-            .json(json!({"error": "Login unavailable"})),
+        Err(_) => {
+            return HttpResponse::InternalServerError().json(json!({"error": "Login unavailable"}))
+        }
     };
 
     if !verify(&body.password, &stored_hash).unwrap_or(false) {
@@ -360,10 +347,7 @@ async fn register(
     }
 }
 
-async fn get_current_user(
-    request: HttpRequest,
-    state: web::Data<AppState>,
-) -> HttpResponse {
+async fn get_current_user(request: HttpRequest, state: web::Data<AppState>) -> HttpResponse {
     match authenticate(&request, &state, false) {
         Ok(Some(claims)) => HttpResponse::Ok().json(json!({
             "user_id": claims.sub,
@@ -390,10 +374,7 @@ fn alert_json(row: &PgRow) -> Value {
     })
 }
 
-async fn list_alerts(
-    request: HttpRequest,
-    state: web::Data<AppState>,
-) -> HttpResponse {
+async fn list_alerts(request: HttpRequest, state: web::Data<AppState>) -> HttpResponse {
     if let Err(response) = authenticate(&request, &state, true) {
         return response;
     }
@@ -472,10 +453,7 @@ async fn create_alert(
     HttpResponse::Created().json(alert_json(&row))
 }
 
-async fn list_logs(
-    request: HttpRequest,
-    state: web::Data<AppState>,
-) -> HttpResponse {
+async fn list_logs(request: HttpRequest, state: web::Data<AppState>) -> HttpResponse {
     if let Err(response) = authenticate(&request, &state, false) {
         return response;
     }
@@ -616,10 +594,7 @@ async fn create_log(
     HttpResponse::Created().json(log_json)
 }
 
-async fn security_log_stats(
-    request: HttpRequest,
-    state: web::Data<AppState>,
-) -> HttpResponse {
+async fn security_log_stats(request: HttpRequest, state: web::Data<AppState>) -> HttpResponse {
     if let Err(response) = authenticate(&request, &state, false) {
         return response;
     }
@@ -654,10 +629,7 @@ async fn security_log_stats(
     }))
 }
 
-async fn list_assets(
-    request: HttpRequest,
-    state: web::Data<AppState>,
-) -> HttpResponse {
+async fn list_assets(request: HttpRequest, state: web::Data<AppState>) -> HttpResponse {
     if let Err(response) = authenticate(&request, &state, false) {
         return response;
     }
@@ -706,7 +678,6 @@ async fn list_assets(
     }))
 }
 
-
 #[derive(Deserialize)]
 struct CreateAssetRequest {
     name: String,
@@ -746,8 +717,14 @@ async fn create_asset(
 
     let valid_asset_type = matches!(
         asset_type.as_str(),
-        "server" | "workstation" | "network_device" | "database"
-            | "cloud_instance" | "container" | "iot_device" | "firewall"
+        "server"
+            | "workstation"
+            | "network_device"
+            | "database"
+            | "cloud_instance"
+            | "container"
+            | "iot_device"
+            | "firewall"
     );
 
     let valid_status = matches!(
@@ -755,10 +732,7 @@ async fn create_asset(
         "active" | "inactive" | "maintenance" | "compromised" | "decommissioned"
     );
 
-    let valid_criticality = matches!(
-        criticality.as_str(),
-        "low" | "medium" | "high" | "critical"
-    );
+    let valid_criticality = matches!(criticality.as_str(), "low" | "medium" | "high" | "critical");
 
     if name.is_empty()
         || name.len() > 255
@@ -773,15 +747,21 @@ async fn create_asset(
         }));
     }
 
-    let description = body.description.as_deref()
+    let description = body
+        .description
+        .as_deref()
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(str::to_string);
-    let location = body.location.as_deref()
+    let location = body
+        .location
+        .as_deref()
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(str::to_string);
-    let department = body.department.as_deref()
+    let department = body
+        .department
+        .as_deref()
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(str::to_string);
@@ -798,7 +778,7 @@ async fn create_asset(
                    criticality::text AS criticality,
                    location, department,
                    created_at::text AS created_at,
-                   last_seen::text AS last_seen"
+                   last_seen::text AS last_seen",
     )
     .bind(name)
     .bind(description)
@@ -834,10 +814,7 @@ async fn create_asset(
     }))
 }
 
-async fn dashboard_stats(
-    request: HttpRequest,
-    state: web::Data<AppState>,
-) -> HttpResponse {
+async fn dashboard_stats(request: HttpRequest, state: web::Data<AppState>) -> HttpResponse {
     if let Err(response) = authenticate(&request, &state, false) {
         return response;
     }
@@ -886,6 +863,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let database_url = env::var("DATABASE_URL")?;
     let jwt_secret = env::var("JWT_SECRET")?;
     let monitor_token = env::var("TELEGRAM_MONITOR_TOKEN").unwrap_or_default();
+    let agent_token = env::var("AGENT_INGEST_TOKEN").unwrap_or_default();
 
     if jwt_secret.len() < 32 {
         return Err(std::io::Error::new(
@@ -903,6 +881,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .into());
     }
 
+    if agent_token.len() < 64 {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "AGENT_INGEST_TOKEN ausente ou inválido.",
+        )
+        .into());
+    }
+
     let pool = PgPoolOptions::new()
         .max_connections(10)
         .connect(&database_url)
@@ -914,11 +900,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     if !admin_username.is_empty() && !admin_password.is_empty() {
         bootstrap_admin(&pool, &admin_username, &admin_password).await?;
     } else {
-        let user_count = sqlx::query_scalar::<_, i64>(
-            "SELECT COUNT(*)::bigint FROM users",
-        )
-        .fetch_one(&pool)
-        .await?;
+        let user_count = sqlx::query_scalar::<_, i64>("SELECT COUNT(*)::bigint FROM users")
+            .fetch_one(&pool)
+            .await?;
 
         if user_count == 0 {
             return Err(std::io::Error::new(
@@ -939,6 +923,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         pool,
         jwt_secret,
         monitor_token,
+        agent_token,
     });
 
     println!("CKAEW Sentinel AI v0.2.0 iniciado.");
@@ -951,6 +936,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .wrap(Logger::default())
             .route("/", web::get().to(index))
             .route("/api/health", web::get().to(health_check))
+            .route(
+                "/api/agent/metrics",
+                web::post().to(agent_ingest::ingest_agent),
+            )
+            .route("/api/agents", web::get().to(agents::list_agents))
+            .route(
+                "/api/agents/{agent_id}/metrics",
+                web::get().to(agents::agent_metrics_history),
+            )
             .route("/api/auth/login", web::post().to(login))
             .route("/api/auth/register", web::post().to(register))
             .route("/api/auth/me", web::get().to(get_current_user))
@@ -958,7 +952,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .route("/api/assets", web::post().to(create_asset))
             .route("/api/security/logs", web::get().to(list_logs))
             .route("/api/security/logs", web::post().to(create_log))
-            .route("/api/security/logs/stats", web::get().to(security_log_stats))
+            .route(
+                "/api/security/logs/stats",
+                web::get().to(security_log_stats),
+            )
             .route("/api/alerts", web::get().to(list_alerts))
             .route("/api/alerts", web::post().to(create_alert))
             .route("/api/dashboard/stats", web::get().to(dashboard_stats))

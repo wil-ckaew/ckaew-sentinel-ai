@@ -10,7 +10,6 @@ const api = axios.create({
   },
 });
 
-// Interceptor para adicionar token
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('auth_token');
@@ -20,6 +19,58 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Tipos do agente Rust
+export interface AgentDiskUsage {
+  mount_point: string;
+  total: number;
+  used: number;
+  free: number;
+  usage_percent: number;
+}
+
+export interface AgentNetworkUsage {
+  interface: string;
+  bytes_received: number;
+  bytes_sent: number;
+  packets_received: number;
+  packets_sent: number;
+}
+
+export interface AgentProcess {
+  pid: number;
+  name: string;
+  cmd: string;
+  cpu_usage: number;
+  memory_usage: number;
+  status: string;
+  start_time: string;
+}
+
+export interface AgentMetric {
+  id: number;
+  collected_at: string;
+  cpu_usage: number;
+  memory_usage: number;
+  load_average: number[];
+  disk_usage: AgentDiskUsage[];
+  network_usage: AgentNetworkUsage[];
+  processes: AgentProcess[];
+}
+
+export interface AgentRecord {
+  agent_id: string;
+  hostname: string;
+  operating_system: string;
+  kernel_version: string;
+  cpu_cores: number;
+  total_memory: number;
+  uptime: number;
+  first_seen: string;
+  last_seen: string;
+  status: 'online' | 'offline' | string;
+  latest_metric: AgentMetric | null;
+}
 
 // Auth
 export const auth = {
@@ -52,8 +103,23 @@ export const alerts = {
   create: (data: any) => api.post('/api/alerts', data),
   get: (id: string) => api.get(`/api/alerts/${id}`),
   update: (id: string, data: any) => api.put(`/api/alerts/${id}`, data),
-  resolve: (id: string, notes: string) => 
+  resolve: (id: string, notes: string) =>
     api.post(`/api/alerts/${id}/resolve`, { resolution_notes: notes }),
+};
+
+// Rust Agents
+export const agents = {
+  list: () =>
+    api.get<{ total: number; agents: AgentRecord[] }>('/api/agents'),
+
+  history: (agentId: string, limit = 120) =>
+    api.get<{
+      agent_id: string;
+      total: number;
+      metrics: AgentMetric[];
+    }>(`/api/agents/${encodeURIComponent(agentId)}/metrics`, {
+      params: { limit },
+    }),
 };
 
 // AI Service

@@ -1,11 +1,12 @@
-use std::fs::File;
+use std::collections::HashMap;
+use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Seek, SeekFrom};
 use std::path::Path;
-use regex::Regex;
-use chrono::Utc;
-use std::collections::HashMap;
 
-use crate::models::{SecurityLog, LogSeverity};
+use chrono::Utc;
+use regex::Regex;
+
+use crate::models::{LogSeverity, SecurityLog};
 
 pub struct LogCollector {
     watched_files: Vec<WatchedFile>,
@@ -30,42 +31,36 @@ impl LogCollector {
             watched_files: Vec::new(),
             patterns: Vec::new(),
         };
-        
-        // Adicionar padrões comuns de logs de segurança
+
         collector.add_patterns();
         collector
     }
 
     fn add_patterns(&mut self) {
-        // Padrão de falha de login
         self.patterns.push(LogPattern {
             pattern: Regex::new(r"(?i)FAILED (LOGIN|AUTH|PASSWORD)").unwrap(),
             severity: LogSeverity::Warning,
             event_type: "FAILED_LOGIN".to_string(),
         });
 
-        // Padrão de acesso root
         self.patterns.push(LogPattern {
-            pattern: Regex::new(r"(?i)ROOT LOGIN|SUDO|SU").unwrap(),
+            pattern: Regex::new(r"(?i)ROOT LOGIN|SUDO|\bsu\b").unwrap(),
             severity: LogSeverity::Info,
             event_type: "PRIVILEGED_ACCESS".to_string(),
         });
 
-        // Padrão de possível ataque
         self.patterns.push(LogPattern {
             pattern: Regex::new(r"(?i)ATTACK|INTRUSION|EXPLOIT|UNAUTHORIZED").unwrap(),
             severity: LogSeverity::Critical,
             event_type: "SUSPICIOUS_ACTIVITY".to_string(),
         });
 
-        // Padrão de erro de firewall
         self.patterns.push(LogPattern {
-            pattern: Regex::new(r"(?i)FIREWALL.*BLOCK|DROP|DENY").unwrap(),
+            pattern: Regex::new(r"(?i)FIREWALL.*BLOCK|\bDROP\b|\bDENY\b").unwrap(),
             severity: LogSeverity::Error,
             event_type: "FIREWALL_BLOCK".to_string(),
         });
 
-        // Padrão de malware
         self.patterns.push(LogPattern {
             pattern: Regex::new(r"(?i)MALWARE|VIRUS|TROJAN|RANSOMWARE").unwrap(),
             severity: LogSeverity::Critical,
@@ -74,27 +69,45 @@ impl LogCollector {
     }
 
     pub fn watch_file(&mut self, path: String, max_size: u64) {
+        // Começar do final do arquivo evita reenviar todo o histórico
+        // do sistema na primeira inicialização do agente.
+        let position = fs::metadata(&path)
+            .map(|metadata| metadata.len())
+            .unwrap_or(0);
+
         self.watched_files.push(WatchedFile {
             path,
-            position: 0,
-            max_size,
+            position,
+            max_size: max_size.max(1),
         });
     }
 
     pub fn collect_logs(&mut self) -> Vec<SecurityLog> {
         let mut logs = Vec::new();
 
-        for watched in &mut self.watched_files {
-            if let Ok(mut collected) = self.process_watched_file(watched) {
-                logs.append(&mut collected);
+        // Separar os empréstimos de patterns e watched_files
+        // evita o conflito de empréstimo do compilador Rust.
+        let patterns = &self.patterns;
+        let watched_files = &mut self.watched_files;
+
+        for watched in watched_files {
+            match Self::process_watched_file(patterns, watched) {
+                Ok(mut collected) => logs.append(&mut collected),
+                Err(error) => {
+                    log::warn!("Não foi possível ler {}: {}", watched.path, error);
+                }
             }
         }
 
         logs
     }
 
-    fn process_watched_file(&self, watched: &mut WatchedFile) -> Result<Vec<SecurityLog>, std::io::Error> {
+    fn process_watched_file(
+        patterns: &[LogPattern],
+        watched: &mut WatchedFile,
+    ) -> Result<Vec<SecurityLog>, std::io::Error> {
         let path = Path::new(&watched.path);
+
         if !path.exists() {
             return Ok(Vec::new());
         }
@@ -103,13 +116,15 @@ impl LogCollector {
         let metadata = file.metadata()?;
         let file_size = metadata.len();
 
-        // Se o arquivo foi rotacionado, resetar posição
+        // Detectar rotação ou truncamento do arquivo.
         if file_size < watched.position {
             watched.position = 0;
         }
 
-        // Se o arquivo cresceu além do limite, ajustar posição
-        if file_size > watched.max_size && file_size - watched.position > watched.max_size {
+        // Não ler mais que o limite configurado.
+        if file_size > watched.max_size
+            && file_size.saturating_sub(watched.position) > watched.max_size
+        {
             watched.position = file_size - watched.max_size;
         }
 
@@ -117,52 +132,48 @@ impl LogCollector {
         reader.seek(SeekFrom::Start(watched.position))?;
 
         let mut logs = Vec::new();
-        let mut lines_read = 0;
         let mut current_position = watched.position;
 
-        for line in reader.lines() {
+        for line in reader.lines().take(10000) {
             let line = line?;
-            lines_read += 1;
-            current_position += line.len() as u64 + 1; // +1 for newline
 
-            // Analisar linha
-            if let Some(log) = self.analyze_line(&line) {
+            current_position += line.as_bytes().len() as u64 + 1;
+
+            if let Some(log) = Self::analyze_line(patterns, &line) {
                 logs.push(log);
-            }
-
-            // Limitar número de linhas para não sobrecarregar
-            if lines_read > 10000 {
-                break;
             }
         }
 
         watched.position = current_position;
+
         Ok(logs)
     }
 
-    fn analyze_line(&self, line: &str) -> Option<SecurityLog> {
-        // Primeiro, tentar identificar padrões conhecidos
-        for pattern in &self.patterns {
+    fn analyze_line(patterns: &[LogPattern], line: &str) -> Option<SecurityLog> {
+        if line.trim().is_empty() {
+            return None;
+        }
+
+        for pattern in patterns {
             if pattern.pattern.is_match(line) {
                 return Some(SecurityLog {
                     event_type: pattern.event_type.clone(),
                     severity: pattern.severity.clone(),
                     message: line.to_string(),
-                    source_ip: self.extract_ip(line),
-                    details: self.extract_details(line),
+                    source_ip: Self::extract_ip(line),
+                    details: Self::extract_details(line),
                     timestamp: Utc::now(),
                 });
             }
         }
 
-        // Se não encontrou padrão, mas é um log (contém palavras-chave comuns)
-        if self.is_likely_log(line) {
+        if Self::is_likely_log(line) {
             Some(SecurityLog {
                 event_type: "SYSTEM_LOG".to_string(),
-                severity: self.guess_severity(line),
+                severity: Self::guess_severity(line),
                 message: line.to_string(),
-                source_ip: self.extract_ip(line),
-                details: self.extract_details(line),
+                source_ip: Self::extract_ip(line),
+                details: Self::extract_details(line),
                 timestamp: Utc::now(),
             })
         } else {
@@ -170,19 +181,29 @@ impl LogCollector {
         }
     }
 
-    fn is_likely_log(&self, line: &str) -> bool {
-        let log_keywords = vec![
-            "log", "error", "warning", "info", "debug", "trace",
-            "fail", "success", "access", "connect", "disconnect",
+    fn is_likely_log(line: &str) -> bool {
+        let keywords = [
+            "log",
+            "error",
+            "warning",
+            "info",
+            "debug",
+            "trace",
+            "fail",
+            "success",
+            "access",
+            "connect",
+            "disconnect",
         ];
-        
+
         let line_lower = line.to_lowercase();
-        log_keywords.iter().any(|kw| line_lower.contains(kw))
+
+        keywords.iter().any(|keyword| line_lower.contains(keyword))
     }
 
-    fn guess_severity(&self, line: &str) -> LogSeverity {
+    fn guess_severity(line: &str) -> LogSeverity {
         let line_lower = line.to_lowercase();
-        
+
         if line_lower.contains("critical") || line_lower.contains("emergency") {
             LogSeverity::Critical
         } else if line_lower.contains("error") || line_lower.contains("fail") {
@@ -194,27 +215,34 @@ impl LogCollector {
         }
     }
 
-    fn extract_ip(&self, text: &str) -> Option<String> {
-        let ip_pattern = Regex::new(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b").unwrap();
-        ip_pattern.find(text).map(|m| m.as_str().to_string())
+    fn extract_ip(text: &str) -> Option<String> {
+        let pattern = Regex::new(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b").ok()?;
+
+        pattern
+            .find(text)
+            .map(|matched| matched.as_str().to_string())
     }
 
-    fn extract_details(&self, text: &str) -> HashMap<String, serde_json::Value> {
+    fn extract_details(text: &str) -> HashMap<String, serde_json::Value> {
         let mut details = HashMap::new();
-        
-        // Extrair data/hora se presente
+
         let datetime_pattern = Regex::new(r"\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}").unwrap();
-        if let Some(dt) = datetime_pattern.find(text) {
-            details.insert("timestamp".to_string(), 
-                serde_json::Value::String(dt.as_str().to_string()));
+
+        if let Some(datetime) = datetime_pattern.find(text) {
+            details.insert(
+                "timestamp".to_string(),
+                serde_json::Value::String(datetime.as_str().to_string()),
+            );
         }
 
-        // Extrair PID se presente
         let pid_pattern = Regex::new(r"\[(\d+)\]").unwrap();
-        if let Some(caps) = pid_pattern.captures(text) {
-            if let Some(pid) = caps.get(1) {
-                details.insert("pid".to_string(), 
-                    serde_json::Value::String(pid.as_str().to_string()));
+
+        if let Some(captures) = pid_pattern.captures(text) {
+            if let Some(pid) = captures.get(1) {
+                details.insert(
+                    "pid".to_string(),
+                    serde_json::Value::String(pid.as_str().to_string()),
+                );
             }
         }
 

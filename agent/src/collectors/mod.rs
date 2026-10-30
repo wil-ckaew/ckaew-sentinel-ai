@@ -1,5 +1,5 @@
-mod system;
 mod logs;
+mod system;
 
-pub use system::SystemCollector;
 pub use logs::LogCollector;
+pub use system::SystemCollector;

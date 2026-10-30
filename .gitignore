@@ -161,3 +161,6 @@ node_modules/
 ai-service/models/saved/
 ai-service/models/*.joblib
 ai-service/models/*.pkl
+
+# Artefatos compilados do agente Rust
+/agent/target/

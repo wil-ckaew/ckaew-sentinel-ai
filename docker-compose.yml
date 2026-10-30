@@ -52,6 +52,7 @@ services:
       DATABASE_URL: postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-sentinel_ai}
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET}
+      AGENT_INGEST_TOKEN: ${AGENT_INGEST_TOKEN}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-7d}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       HOST: 0.0.0.0

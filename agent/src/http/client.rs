@@ -24,10 +24,14 @@ impl ApiClient {
         }
     }
 
-    pub async fn send_metrics(&self, payload: &AgentPayload) -> Result<ServerResponse, anyhow::Error> {
+    pub async fn send_metrics(
+        &self,
+        payload: &AgentPayload,
+    ) -> Result<ServerResponse, anyhow::Error> {
         let url = format!("{}/api/agent/metrics", self.server_url);
-        
-        let response = self.client
+
+        let response = self
+            .client
             .post(&url)
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
@@ -39,20 +43,28 @@ impl ApiClient {
             let server_response: ServerResponse = response.json().await?;
             Ok(server_response)
         } else {
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
             Err(anyhow::anyhow!("Server error: {}", error_text))
         }
     }
 
-    pub async fn send_logs(&self, logs: &[crate::models::SecurityLog], agent_id: &str) -> Result<(), anyhow::Error> {
+    pub async fn send_logs(
+        &self,
+        logs: &[crate::models::SecurityLog],
+        agent_id: &str,
+    ) -> Result<(), anyhow::Error> {
         let url = format!("{}/api/security/logs/batch", self.server_url);
-        
+
         let payload = json!({
             "agent_id": agent_id,
             "logs": logs
         });
 
-        let response = self.client
+        let response = self
+            .client
             .post(&url)
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
@@ -61,7 +73,10 @@ impl ApiClient {
             .await?;
 
         if !response.status().is_success() {
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
             return Err(anyhow::anyhow!("Failed to send logs: {}", error_text));
         }
 
@@ -70,8 +85,9 @@ impl ApiClient {
 
     pub async fn health_check(&self) -> Result<bool, anyhow::Error> {
         let url = format!("{}/api/health", self.server_url);
-        
-        let response = self.client
+
+        let response = self
+            .client
             .get(&url)
             .header("Authorization", format!("Bearer {}", self.api_key))
             .send()
