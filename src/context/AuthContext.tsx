@@ -1,6 +1,14 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from 'react';
+
+import { auth } from '@/lib/api';
 
 interface User {
   id: string;
@@ -23,54 +31,120 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Valida o JWT com o backend ao carregar a aplicação.
   useEffect(() => {
-    // Verificar autenticação no cliente
-    if (typeof window !== 'undefined') {
+    let active = true;
+
+    async function verifySession() {
       const token = localStorage.getItem('auth_token');
-      const userData = localStorage.getItem('user');
-      
-      if (token && userData) {
-        try {
-          const parsedUser = JSON.parse(userData);
-          setUser(parsedUser);
-          setIsAuthenticated(true);
-        } catch (e) {
-          console.error('Erro ao parsear user data');
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('user');
+
+      if (!token) {
+        if (active) {
+          setUser(null);
+          setIsAuthenticated(false);
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const response = await auth.getMe();
+
+        if (!active) return;
+
+        const data = response.data;
+
+        const userData: User = {
+          id: String(data.user_id ?? data.id ?? ''),
+          username: String(data.username ?? ''),
+          role: String(data.role ?? ''),
+        };
+
+        if (!userData.username || !userData.id) {
+          throw new Error('Resposta de autenticação inválida.');
+        }
+
+        localStorage.setItem('user', JSON.stringify(userData));
+
+        setUser(userData);
+        setIsAuthenticated(true);
+      } catch {
+        if (!active) return;
+
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+
+        setUser(null);
+        setIsAuthenticated(false);
+      } finally {
+        if (active) {
+          setLoading(false);
         }
       }
-      setLoading(false);
     }
+
+    verifySession();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const login = async (username: string, password: string): Promise<boolean> => {
-    // Simular login - em produção, chamar a API
-    if (username === 'admin' && password === 'admin123') {
-      const userData: User = { 
-        id: '1', 
-        username: 'admin', 
-        role: 'Administrador' 
+  // Usa o endpoint real de autenticação, sem credenciais simuladas.
+  const login = async (
+    username: string,
+    password: string
+  ): Promise<boolean> => {
+    try {
+      const response = await auth.login(username.trim(), password);
+      const data = response.data;
+
+      if (
+        !data ||
+        typeof data.token !== 'string' ||
+        !data.token ||
+        !data.username ||
+        !data.user_id
+      ) {
+        return false;
+      }
+
+      const userData: User = {
+        id: String(data.user_id),
+        username: String(data.username),
+        role: String(data.role ?? ''),
       };
-      localStorage.setItem('auth_token', 'fake-token-123');
+
+      localStorage.setItem('auth_token', data.token);
       localStorage.setItem('user', JSON.stringify(userData));
+
       setUser(userData);
       setIsAuthenticated(true);
+
       return true;
+    } catch {
+      return false;
     }
-    return false;
   };
 
   const logout = () => {
-    // Limpar localStorage
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user');
+
     setUser(null);
     setIsAuthenticated(false);
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, loading }}>
+    <AuthContext.Provider
+      value={{
+        isAuthenticated,
+        user,
+        login,
+        logout,
+        loading,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -78,8 +152,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
+
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
+
   return context;
 }

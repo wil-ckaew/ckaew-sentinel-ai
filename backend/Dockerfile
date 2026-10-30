@@ -9,7 +9,6 @@ RUN rm -rf src
 
 COPY src ./src
 COPY migrations ./migrations
-COPY .env .env
 RUN rm -rf /app/target/release
 RUN cargo build --release
 RUN ls -la /app/target/release/ | grep -E "ckaew|sentinel"
@@ -31,7 +30,6 @@ COPY --from=builder /app/target/release/ckaew-sentinel-ai /usr/local/bin/ckaew-s
 RUN ls -la /usr/local/bin/
 
 COPY --from=builder /app/migrations /app/migrations
-COPY --from=builder /app/.env /app/.env
 
 RUN mkdir -p /app/uploads && chmod +x /usr/local/bin/ckaew-sentinel-ai
 

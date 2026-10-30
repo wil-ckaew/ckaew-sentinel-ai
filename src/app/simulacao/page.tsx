@@ -91,7 +91,7 @@ export default function SimulacaoPage() {
       addLog(`💀 ATAQUE BEM SUCEDIDO! ${attackType.name} comprometeu ${target}`, 'success');
       
       try {
-        await fetch('http://localhost:8080/api/security/logs', {
+        await fetch('/api/security/logs', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

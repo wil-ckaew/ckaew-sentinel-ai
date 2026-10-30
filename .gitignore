@@ -156,3 +156,8 @@ passwords.txt
 # Node modules (já deve estar no .gitignore)
 node_modules/
 node_modules/
+
+# Modelos treinados localmente: não versionar artefatos gerados
+ai-service/models/saved/
+ai-service/models/*.joblib
+ai-service/models/*.pkl

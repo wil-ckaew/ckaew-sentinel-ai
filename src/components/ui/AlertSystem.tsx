@@ -26,7 +26,7 @@ export default function AlertSystem() {
     const fetchAlerts = async () => {
       try {
         const token = localStorage.getItem('auth_token');
-        const response = await fetch('http://localhost:8080/api/alerts', {
+        const response = await fetch('/api/alerts', {
           headers: {
             'Authorization': token ? `Bearer ${token}` : '',
           },

@@ -1,24 +1,28 @@
-<<<<<<< HEAD
-node_modules
-.next
-.git
-*.md
-*.log
-.env.local
-.DS_Store
-=======
+# Dependencias e arquivos de compilação
+node_modules/
+.next/
 target/
+dist/
+build/
+
+# Controle de versão
 .git/
+
+# Arquivos desnecessários para a compilação
 *.md
 *.log
 *.tmp
 .DS_Store
+
+# Configurações locais de ambiente
 .env.local
 .env.*.local
-node_modules/
-dist/
-build/
+
+# Chaves privadas e certificados
 *.pem
 *.key
 *.crt
->>>>>>> 61a6549ee9cfbf7e7cec9a1308aafc1cd6828fce
+
+# Segredos e arquivos de ambiente: excluir do contexto Docker
+.env
+.env.*

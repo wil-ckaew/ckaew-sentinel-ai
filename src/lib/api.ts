@@ -49,6 +49,7 @@ export const logs = {
 // Alerts
 export const alerts = {
   list: (params?: any) => api.get('/api/alerts', { params }),
+  create: (data: any) => api.post('/api/alerts', data),
   get: (id: string) => api.get(`/api/alerts/${id}`),
   update: (id: string, data: any) => api.put(`/api/alerts/${id}`, data),
   resolve: (id: string, notes: string) => 

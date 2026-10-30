@@ -4,14 +4,18 @@ ENVIO DIRETO PARA TELEGRAM
 """
 import requests
 import sys
+import os
 import time
 from datetime import datetime
 
-TOKEN = "8882917542:AAF1IjODcd8JiyBM0W2BrUkpT46YbWunvqs"
-CHAT_ID = "920417229"
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
 
 def send_message(text):
     """Envia mensagem para o Telegram"""
+    if not TOKEN or not CHAT_ID:
+        print("Erro: configure TELEGRAM_BOT_TOKEN e TELEGRAM_CHAT_ID no .env")
+        return False
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     data = {
         "chat_id": CHAT_ID,
@@ -26,10 +30,10 @@ def send_message(text):
             print("✅ Mensagem enviada com sucesso!")
             return True
         else:
-            print(f"❌ Erro: {result}")
+            print(f"Falha no envio ao Telegram (HTTP {response.status_code}).")
             return False
     except Exception as e:
-        print(f"❌ Erro ao enviar: {e}")
+        print(f"Falha no envio ao Telegram: {type(e).__name__}")
         return False
 
 def send_alert(title, priority, source, message):
@@ -63,14 +67,24 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Uso:")
         print("  python3 send_telegram.py test")
-        print("  python3 send_telegram.py alert \"Título\" \"prioridade\" \"IP\" \"Mensagem\"")
-        sys.exit(1)
-    
+        print('  python3 send_telegram.py alert "Título" "prioridade" "IP" "Mensagem"')
+        sys.exit(2)
+
     if sys.argv[1] == "test":
-        send_alert("🧪 Teste do Sistema", "critical", "Sistema", "Teste de conexão realizado com sucesso!")
-    else:
+        success = send_alert(
+            "Teste do Sistema",
+            "critical",
+            "Sistema",
+            "Teste de conexão solicitado pelo administrador."
+        )
+    elif sys.argv[1] == "alert":
         title = sys.argv[2] if len(sys.argv) > 2 else "Alerta"
         priority = sys.argv[3] if len(sys.argv) > 3 else "critical"
         source = sys.argv[4] if len(sys.argv) > 4 else "Desconhecido"
         message = sys.argv[5] if len(sys.argv) > 5 else "Incidente detectado"
-        send_alert(title, priority, source, message)
+        success = send_alert(title, priority, source, message)
+    else:
+        print("Comando não reconhecido.")
+        sys.exit(2)
+
+    sys.exit(0 if success else 1)

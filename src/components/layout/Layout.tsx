@@ -23,7 +23,9 @@ import Logo from '@/components/ui/Logo';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
+  { name: 'Alertas', href: '/alerts', icon: BellIcon },
   { name: 'Incidentes', href: '/incidentes', icon: ExclamationTriangleIcon },
+  { name: 'Logs de Segurança', href: '/logs', icon: DocumentTextIcon },
   { name: 'Ativos', href: '/ativos', icon: ServerIcon },
   { name: 'Vulnerabilidades', href: '/vulnerabilidades', icon: ShieldCheckIcon },
   { name: 'Monitoramento', href: '/monitoramento', icon: ComputerDesktopIcon },
