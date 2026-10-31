@@ -217,7 +217,7 @@ pub async fn ingest_agent(
             .execute(&mut *transaction)
             .await?;
 
-            if severity == "critical" || severity == "error" {
+            if should_create_alert_for_agent_log(&event_type, &severity, &message) {
                 let priority = if severity == "critical" {
                     "critical"
                 } else {
@@ -279,5 +279,102 @@ pub async fn ingest_agent(
                 "error": "Could not store agent data"
             }))
         }
+    }
+}
+
+/// Decide se um log recebido do agente deve gerar um alerta.
+///
+/// Os eventos conhecidos de diagnóstico do Chrome continuam sendo
+/// armazenados em security_logs, mas não geram alertas de segurança.
+fn should_create_alert_for_agent_log(event_type: &str, severity: &str, message: &str) -> bool {
+    if severity == "critical" {
+        return true;
+    }
+
+    if severity != "error" {
+        return false;
+    }
+
+    let chrome_markers = [
+        "DEPRECATED_ENDPOINT",
+        "Failed global descriptor lookup",
+        "CompositorAnimationObserver is active for too long",
+    ];
+
+    let is_known_chrome_noise = event_type == "SYSTEM_LOG"
+        && message.contains("google-chrome.desktop")
+        && chrome_markers.iter().any(|marker| message.contains(marker));
+
+    !is_known_chrome_noise
+}
+
+#[cfg(test)]
+mod agent_ingest_tests {
+    use super::should_create_alert_for_agent_log;
+
+    #[test]
+    fn chrome_deprecated_endpoint_does_not_create_alert() {
+        let result = should_create_alert_for_agent_log(
+            "SYSTEM_LOG",
+            "error",
+            "google-chrome.desktop: Registration response error: DEPRECATED_ENDPOINT",
+        );
+
+        assert!(!result);
+    }
+
+    #[test]
+    fn chrome_shared_memory_error_does_not_create_alert() {
+        let result = should_create_alert_for_agent_log(
+            "SYSTEM_LOG",
+            "error",
+            "google-chrome.desktop: Failed global descriptor lookup: 7",
+        );
+
+        assert!(!result);
+    }
+
+    #[test]
+    fn chrome_compositor_error_does_not_create_alert() {
+        let result = should_create_alert_for_agent_log(
+            "SYSTEM_LOG",
+            "error",
+            "google-chrome.desktop: CompositorAnimationObserver is active for too long",
+        );
+
+        assert!(!result);
+    }
+
+    #[test]
+    fn unrelated_system_error_still_creates_alert() {
+        let result = should_create_alert_for_agent_log(
+            "SYSTEM_LOG",
+            "error",
+            "Falha inesperada em outro serviço do sistema",
+        );
+
+        assert!(result);
+    }
+
+    #[test]
+    fn critical_event_always_creates_alert() {
+        let result = should_create_alert_for_agent_log(
+            "SYSTEM_LOG",
+            "critical",
+            "google-chrome.desktop: DEPRECATED_ENDPOINT",
+        );
+
+        assert!(result);
+    }
+
+    #[test]
+    fn informational_event_does_not_create_alert() {
+        let result = should_create_alert_for_agent_log(
+            "SYSTEM_LOG",
+            "info",
+            "Dados enviados ao backend com sucesso",
+        );
+
+        assert!(!result);
     }
 }

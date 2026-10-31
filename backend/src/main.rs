@@ -1,5 +1,7 @@
 mod agent_ingest;
 mod agents;
+mod db;
+mod detection;
 
 use actix_web::{
     http::header::AUTHORIZATION, middleware::Logger, web, App, HttpRequest, HttpResponse,
@@ -361,6 +363,7 @@ async fn get_current_user(request: HttpRequest, state: web::Data<AppState>) -> H
 
 fn alert_json(row: &PgRow) -> Value {
     let description: Option<String> = row.try_get("description").unwrap_or(None);
+    let metadata: Value = row.try_get("metadata").unwrap_or_else(|_| json!({}));
 
     json!({
         "id": row.try_get::<String, _>("id").unwrap_or_default(),
@@ -370,7 +373,12 @@ fn alert_json(row: &PgRow) -> Value {
         "source_ip": row.try_get::<Option<String>, _>("source_ip").unwrap_or(None),
         "description": description,
         "message": description.unwrap_or_default(),
-        "created_at": row.try_get::<String, _>("created_at").unwrap_or_default()
+        "metadata": metadata,
+        "agent_hostname": row.try_get::<Option<String>, _>("agent_hostname").unwrap_or(None),
+        "created_at": row.try_get::<String, _>("created_at").unwrap_or_default(),
+        "updated_at": row.try_get::<Option<String>, _>("updated_at").unwrap_or(None),
+        "resolved_at": row.try_get::<Option<String>, _>("resolved_at").unwrap_or(None),
+        "resolution_notes": row.try_get::<Option<String>, _>("resolution_notes").unwrap_or(None)
     })
 }
 
@@ -380,10 +388,24 @@ async fn list_alerts(request: HttpRequest, state: web::Data<AppState>) -> HttpRe
     }
 
     let rows = match sqlx::query(
-        "SELECT id::text AS id, title, priority::text AS priority,
-                status::text AS status, source_ip, description,
-                created_at::text AS created_at
-         FROM alerts ORDER BY created_at DESC LIMIT 100",
+        "SELECT
+                a.id::text AS id,
+                a.title,
+                a.priority::text AS priority,
+                a.status::text AS status,
+                a.source_ip,
+                a.description,
+                a.metadata,
+                a.created_at::text AS created_at,
+                a.updated_at::text AS updated_at,
+                a.resolved_at::text AS resolved_at,
+                a.resolution_notes,
+                ag.hostname AS agent_hostname
+         FROM alerts a
+         LEFT JOIN agents ag
+           ON ag.agent_id = a.metadata->>'agent_id'
+         ORDER BY a.created_at DESC
+         LIMIT 100",
     )
     .fetch_all(&state.pool)
     .await
@@ -431,9 +453,18 @@ async fn create_alert(
     let row = match sqlx::query(
         "INSERT INTO alerts (title, description, priority, status, source_ip)
          VALUES ($1, $2, $3::alert_priority, 'new'::alert_status, $4)
-         RETURNING id::text AS id, title, priority::text AS priority,
-                   status::text AS status, source_ip, description,
-                   created_at::text AS created_at",
+         RETURNING
+            id::text AS id,
+            title,
+            priority::text AS priority,
+            status::text AS status,
+            source_ip,
+            description,
+            metadata,
+            created_at::text AS created_at,
+            updated_at::text AS updated_at,
+            resolved_at::text AS resolved_at,
+            resolution_notes",
     )
     .bind(title)
     .bind(description)
@@ -894,6 +925,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .connect(&database_url)
         .await?;
 
+    // Executa as migrações antes do bootstrap e do motor de detecção.
+    db::run_migrations(&pool).await?;
+    log::info!("Migrações do PostgreSQL verificadas e aplicadas.");
+
     let admin_username = env::var("ADMIN_BOOTSTRAP_USERNAME").unwrap_or_default();
     let admin_password = env::var("ADMIN_BOOTSTRAP_PASSWORD").unwrap_or_default();
 
@@ -912,6 +947,28 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .into());
         }
     }
+
+    // Motor automático de detecção de anomalias dos agentes.
+    let detection_config = detection::DetectionConfig::from_env();
+    let detection_interval = detection_config.interval_secs;
+    let detection_pool = pool.clone();
+
+    tokio::spawn(async move {
+        let mut ticker = tokio::time::interval(std::time::Duration::from_secs(detection_interval));
+
+        loop {
+            ticker.tick().await;
+
+            if let Err(error) = detection::run_cycle(&detection_pool, &detection_config).await {
+                log::error!("Motor de detecção: falha no ciclo: {error}");
+            }
+        }
+    });
+
+    log::info!(
+        "Motor de detecção iniciado. Intervalo: {} segundos.",
+        detection_interval
+    );
 
     let port = env::var("PORT")
         .ok()

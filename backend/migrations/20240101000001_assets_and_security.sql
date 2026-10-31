@@ -1,5 +1,7 @@
 -- Criar tipos ENUM para ativos
-CREATE TYPE asset_type AS ENUM (
+DO $$
+BEGIN
+    CREATE TYPE asset_type AS ENUM (
     'server',
     'workstation',
     'network_device',
@@ -8,32 +10,58 @@ CREATE TYPE asset_type AS ENUM (
     'container',
     'iot_device',
     'firewall'
-);
 
-CREATE TYPE asset_status AS ENUM (
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END
+$$;
+
+DO $$
+BEGIN
+    CREATE TYPE asset_status AS ENUM (
     'active',
     'inactive',
     'maintenance',
     'compromised',
     'decommissioned'
-);
 
-CREATE TYPE criticality AS ENUM (
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END
+$$;
+
+DO $$
+BEGIN
+    CREATE TYPE criticality AS ENUM (
     'low',
     'medium',
     'high',
     'critical'
-);
 
-CREATE TYPE log_severity AS ENUM (
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END
+$$;
+
+DO $$
+BEGIN
+    CREATE TYPE log_severity AS ENUM (
     'info',
     'warning',
     'error',
     'critical'
-);
+
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- Tabela de ativos
-CREATE TABLE assets (
+CREATE TABLE IF NOT EXISTS assets (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -51,29 +79,43 @@ CREATE TABLE assets (
 );
 
 -- Índices para assets
-CREATE INDEX idx_assets_ip_address ON assets(ip_address);
-CREATE INDEX idx_assets_status ON assets(status);
-CREATE INDEX idx_assets_type ON assets(asset_type);
-CREATE INDEX idx_assets_criticality ON assets(criticality);
-CREATE INDEX idx_assets_owner ON assets(owner_id);
+CREATE INDEX IF NOT EXISTS idx_assets_ip_address ON assets(ip_address);
+CREATE INDEX IF NOT EXISTS idx_assets_status ON assets(status);
+CREATE INDEX IF NOT EXISTS idx_assets_type ON assets(asset_type);
+CREATE INDEX IF NOT EXISTS idx_assets_criticality ON assets(criticality);
+CREATE INDEX IF NOT EXISTS idx_assets_owner ON assets(owner_id);
 
 -- Tabela de vulnerabilidades
-CREATE TYPE vulnerability_severity AS ENUM (
+DO $$
+BEGIN
+    CREATE TYPE vulnerability_severity AS ENUM (
     'low',
     'medium',
     'high',
     'critical'
-);
 
-CREATE TYPE vulnerability_status AS ENUM (
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END
+$$;
+
+DO $$
+BEGIN
+    CREATE TYPE vulnerability_status AS ENUM (
     'open',
     'in_progress',
     'mitigated',
     'accepted',
     'closed'
-);
 
-CREATE TABLE vulnerabilities (
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END
+$$;
+
+CREATE TABLE IF NOT EXISTS vulnerabilities (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     asset_id UUID NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
     cve_id VARCHAR(50),
@@ -92,13 +134,13 @@ CREATE TABLE vulnerabilities (
 );
 
 -- Índices para vulnerabilidades
-CREATE INDEX idx_vulnerabilities_asset ON vulnerabilities(asset_id);
-CREATE INDEX idx_vulnerabilities_severity ON vulnerabilities(severity);
-CREATE INDEX idx_vulnerabilities_status ON vulnerabilities(status);
-CREATE INDEX idx_vulnerabilities_cve ON vulnerabilities(cve_id);
+CREATE INDEX IF NOT EXISTS idx_vulnerabilities_asset ON vulnerabilities(asset_id);
+CREATE INDEX IF NOT EXISTS idx_vulnerabilities_severity ON vulnerabilities(severity);
+CREATE INDEX IF NOT EXISTS idx_vulnerabilities_status ON vulnerabilities(status);
+CREATE INDEX IF NOT EXISTS idx_vulnerabilities_cve ON vulnerabilities(cve_id);
 
 -- Tabela de logs de segurança
-CREATE TABLE security_logs (
+CREATE TABLE IF NOT EXISTS security_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     event_type VARCHAR(100) NOT NULL,
     severity log_severity NOT NULL,
@@ -111,28 +153,42 @@ CREATE TABLE security_logs (
 );
 
 -- Índices para logs
-CREATE INDEX idx_security_logs_created_at ON security_logs(created_at DESC);
-CREATE INDEX idx_security_logs_severity ON security_logs(severity);
-CREATE INDEX idx_security_logs_asset ON security_logs(asset_id);
-CREATE INDEX idx_security_logs_user ON security_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_security_logs_created_at ON security_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_security_logs_severity ON security_logs(severity);
+CREATE INDEX IF NOT EXISTS idx_security_logs_asset ON security_logs(asset_id);
+CREATE INDEX IF NOT EXISTS idx_security_logs_user ON security_logs(user_id);
 
 -- Tabela de alertas
-CREATE TYPE alert_status AS ENUM (
+DO $$
+BEGIN
+    CREATE TYPE alert_status AS ENUM (
     'new',
     'investigating',
     'escalated',
     'resolved',
     'false_positive'
-);
 
-CREATE TYPE alert_priority AS ENUM (
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END
+$$;
+
+DO $$
+BEGIN
+    CREATE TYPE alert_priority AS ENUM (
     'low',
     'medium',
     'high',
     'critical'
-);
 
-CREATE TABLE alerts (
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END
+$$;
+
+CREATE TABLE IF NOT EXISTS alerts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     title VARCHAR(255) NOT NULL,
     description TEXT,
@@ -150,7 +206,7 @@ CREATE TABLE alerts (
 );
 
 -- Índices para alertas
-CREATE INDEX idx_alerts_status ON alerts(status);
-CREATE INDEX idx_alerts_priority ON alerts(priority);
-CREATE INDEX idx_alerts_asset ON alerts(asset_id);
-CREATE INDEX idx_alerts_created_at ON alerts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_alerts_status ON alerts(status);
+CREATE INDEX IF NOT EXISTS idx_alerts_priority ON alerts(priority);
+CREATE INDEX IF NOT EXISTS idx_alerts_asset ON alerts(asset_id);
+CREATE INDEX IF NOT EXISTS idx_alerts_created_at ON alerts(created_at DESC);

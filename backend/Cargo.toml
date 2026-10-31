@@ -14,4 +14,4 @@ log = "0.4.20"
 chrono = "0.4.31"
 bcrypt = "0.15.1"
 jsonwebtoken = "9.3.1"
-sqlx = { version = "0.7.4", default-features = false, features = ["runtime-tokio-rustls", "postgres"] }
+sqlx = { version = "0.7.4", default-features = false, features = ["runtime-tokio-rustls", "postgres", "macros", "migrate"] }

@@ -38,7 +38,7 @@ export default function AlertSystem() {
             const newAlerts = data.alerts;
             
             if (newAlerts.length > lastAlertCount && lastAlertCount > 0) {
-              const latestAlert = newAlerts[newAlerts.length - 1];
+              const latestAlert = newAlerts[0];
               setCurrentAlert(latestAlert);
               setShowAlert(true);
               
