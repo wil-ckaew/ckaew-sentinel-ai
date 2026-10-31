@@ -173,3 +173,9 @@ ai-service/models/*.pkl
 /backups/*.dump
 /ai-service/api/*.bak-*
 /agent/target/
+
+# CKAEW Sentinel AI - Mobile
+mobile-app/node_modules/
+mobile-app-expo/node_modules/
+mobile-app-expo/.expo/
+**/.expo/
